@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Logistics — Knapsack Optimizer (Enhanced)</title>
+<style>
+  :root{
+    --bg:#f7fafc; --card:#ffffff; --muted:#6b7280; --accent1:#0f172a; --accent2:#2563eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#f7fbff,#f7fafc);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:var(--accent1)}
+  header.topbar{position:fixed;top:0;left:0;right:0;height:72px;background:linear-gradient(90deg,#0ea5e9,#2563eb);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;box-shadow:0 6px 18px rgba(37,99,235,0.12);z-index:1000}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.12);display:grid;place-items:center;font-weight:700;font-size:18px}
+  .top-actions{display:flex;gap:8px;align-items:center}
+  .btn{display:inline-flex;gap:8px;align-items:center;background:rgba(255,255,255,0.12);border:0;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+  .btn:hover{transform:translateY(-2px)}
+  .container{max-width:1150px;margin:110px auto 48px;padding:20px}
+  .grid{display:grid;grid-template-columns:1fr 400px;gap:22px}
+  @media (max-width:980px){.grid{grid-template-columns:1fr} .container{margin-top:100px}}
+  .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(12,18,36,0.06)}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .input{padding:8px 10px;border-radius:8px;border:1px solid #e6eef8;background:#fbfdff;width:110px}
+  .solve-btn{background:linear-gradient(90deg,#0ea5e9,#2563eb);color:#fff;padding:10px 16px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{color:var(--muted);font-weight:700;font-size:13px;border-bottom:1px solid #eef3fb;padding:8px}
+  tbody td{padding:8px;border-bottom:1px dashed #f1f5f9}
+  input.cell{width:100%;padding:6px 8px;border-radius:6px;border:1px solid #f0f6ff;background:#fff}
+  .result-list{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto;padding-right:6px}
+  .result-item{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,#ffffff,#fbfdff);border-radius:8px;padding:8px 10px;border:1px solid #eef6ff}
+  .legend{border-radius:10px;overflow:hidden;border:1px solid #e6f0ff;margin-top:12px}
+  .legend-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:linear-gradient(90deg,#f8fbff,#ffffff)}
+  .legend-body{padding:12px;background:#fff;display:none}
+  .legend-body.open{display:block}
+  .pill{padding:6px 10px;border-radius:999px;background:#f3f9ff;color:var(--accent2);font-weight:700}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  footer.project{margin-top:18px;padding:16px;border-radius:10px;background:linear-gradient(180deg,#ffffff,#fbfdff);border:1px solid #eef6ff}
+  .controls-bottom{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .file-input{display:none}
+  .info-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">A6</div>
+    <div><h1 style="margin:0;font-size:18px">Logistics — Knapsack Optimizer</h1><div class="small" style="opacity:0.95">A6 Project - VIVEKANANDA GLOBAL UNVERSITY</div></div>
+  </div>
+
+  <div class="top-actions">
+    <button class="btn" id="printBtn">📄 Export Report (Print/PDF)</button>
+    <button class="btn" id="csvImportBtn">📥 Import CSV</button>
+    <input type="file" id="csvFile" accept=".csv" class="file-input">
+    <button class="btn" id="csvExportBtn">📤 Export CSV</button>
+    <button class="btn" id="saveJsonBtn">💾 Save JSON</button>
+    <input type="file" id="jsonFile" accept=".json" class="file-input">
+  </div>
+</header>
+
+<main class="container">
+  <div class="grid">
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="small muted">Mode</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <label style="display:inline-flex;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;background:#f1f7ff;border:1px solid #e0efff;cursor:pointer;font-weight:600"><input type="radio" name="mode" value="single" checked> Weight-only</label>
+            <label style="display:inline-flex;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;background:#f1f7ff;border:1px solid #e0efff;cursor:pointer;font-weight:600"><input type="radio" name="mode" value="double"> Weight + Volume</label>
+          </div>
+        </div>
+
+        <div style="text-align:right">
+          <div class="small muted">Capacities</div>
+          <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+            <input id="capWeight" class="input" type="number" value="50" />
+            <input id="capVolume" class="input" type="number" value="100" />
+            <button class="solve-btn" id="solveBtn">Solve</button>
+          </div>
+        </div>
+      </div>
+
+      <hr style="margin:14px 0;border:none;border-top:1px solid #f1f5f9" />
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0">Items</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" id="addItemBtn" style="background:linear-gradient(90deg,#10b981,#059669)">➕ Add</button>
+          <button class="btn" id="resetBtn" style="background:rgba(255,255,255,0.12)">♻️ Reset</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto; max-height:380px;">
+        <table id="itemTable">
+          <thead>
+            <tr><th>Name</th><th style="width:90px">Weight</th><th style="width:90px">Volume</th><th style="width:100px">Value</th><th style="width:90px">Action</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="controls-bottom">
+        <div class="info-line muted small">Tip: For exact double-constraint optimality we run a Pareto-state DP — it may fallback to approximate solver if too many states are generated.</div>
+      </div>
+    </section>
+
+    <aside class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <div class="small muted">Current Result</div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="pill" id="modeChip">Weight</div>
+            <div style="font-size:20px;font-weight:800" id="maxValue">—</div>
+          </div>
+          <div class="small muted">Selected items: <span id="selCount">0</span></div>
+        </div>
+        <div id="statusBox" style="min-width:36px"></div>
+      </div>
+
+      <div class="result-list" id="resultList"></div>
+
+      <div class="legend" id="legend">
+        <div class="legend-head">
+          <div style="display:flex;gap:8px;align-items:center"><div class="pill">Legend</div><div class="small muted">Understand Mode & Values</div></div>
+          <div><button id="toggleLegend" class="btn" style="background:linear-gradient(90deg,#fff,#f7f8fb);color:var(--accent1)">ⓘ Expand</button></div>
+        </div>
+        <div class="legend-body" id="legendBody">
+          <div style="margin-bottom:8px"><b>Mode:</b> <span id="legendMode">Weight-only: maximize total value under weight capacity.</span></div>
+          <div style="margin-bottom:6px"><b>Max Value:</b> total of the `Value` fields of selected items.</div>
+          <div style="margin-bottom:6px"><b>Weight (W):</b> item's weight; solver ensures sum ≤ weight capacity.</div>
+          <div style="margin-bottom:6px"><b>Volume (V):</b> item's volume; used when Mode = Weight + Volume.</div>
+          <div style="margin-top:8px"><b>Example result:</b></div>
+          <pre style="background:#f8fcff;padding:8px;border-radius:6px;border:1px solid #eef8ff;margin-top:8px" id="exampleBlock">Mode: Weight | Max Value: 630
+Textiles (W:8, V:25, Val:60)
+Electronics (W:5, V:4, Val:200)
+Furniture (W:30, V:60, Val:250)
+Food crates (W:3, V:2, Val:30)
+Fragile glass (W:4, V:6, Val:90)</pre>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="project card" id="projectDetails" style="margin-top:18px">
+    <h3>Project Details — Logistics and Transportation</h3>
+    <p><b>Project Title:</b> Logistics and Transportation – Specialized Knapsack Optimizer</p>
+    <p><b>Year with Section:</b> 3rd Year, Section E</p>
+    <div style="display:flex;gap:18px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <h4>Group Members</h4>
+        <ul><li>Mohammad Hussain Ali (23TEC2CS503)</li><li>Md Fuzail (23TEC2CS567)</li><li>Nitin Kumar (23TEC2CS509)</li><li>Nikku Shah (23TEC2CS598)</li></ul>
+        <p><b>Project Leader:</b> Md Fuzail – 23TEC2CS567 • 9709706589 • 23tec2cs567@vgu.ac.in</p>
+      </div>
+      <div style="flex:1;min-width:260px">
+        <h4>Synopsis & Objective</h4>
+        <p><b>Synopsis:</b> Web tool to compute efficient loading plans using Knapsack algorithms (weight and volume constraints).</p>
+        <p><b>Objective:</b> Provide actionable load plans to maximize shipment value while respecting capacities using a browser-based UI.</p>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<script>
+/* ---------------- Data & Render ---------------- */
+let items = [
+  {name:'Engine parts', weight:12, volume:10, value:120},
+  {name:'Textiles', weight:8, volume:25, value:60},
+  {name:'Electronics', weight:5, volume:4, value:200},
+  {name:'Furniture', weight:30, volume:60, value:250},
+  {name:'Food crates', weight:3, volume:2, value:30},
+  {name:'Fragile glass', weight:4, volume:6, value:90}
+];
+
+const tbody = document.querySelector('#itemTable tbody');
+const resultList = document.getElementById('resultList');
+const maxValueEl = document.getElementById('maxValue');
+const selCountEl = document.getElementById('selCount');
+const modeChip = document.getElementById('modeChip');
+const statusBox = document.getElementById('statusBox');
+const exampleBlock = document.getElementById('exampleBlock');
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]) }
+function renderTable(){
+  tbody.innerHTML='';
+  items.forEach((it,i)=>{
+    const tr=document.createElement('tr'); tr.dataset.idx=i;
+    tr.innerHTML = `<td><input class="cell" value="${escapeHtml(it.name)}" onchange="updateItem(${i},'name',this.value)"></td>
+    <td><input class="cell" type="number" value="${it.weight}" onchange="updateItem(${i},'weight',Number(this.value))"></td>
+    <td><input class="cell" type="number" value="${it.volume}" onchange="updateItem(${i},'volume',Number(this.value))"></td>
+    <td><input class="cell" type="number" value="${it.value}" onchange="updateItem(${i},'value',Number(this.value))"></td>
+    <td><button class="btn" style="background:linear-gradient(90deg,#ef4444,#f97316)" onclick="removeItem(${i})">Remove</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+function updateItem(i,field,val){ items[i][field]=val; renderTable(); }
+function addItem(){ items.push({name:'New item', weight:1, volume:1, value:1}); renderTable(); }
+function removeItem(i){ items.splice(i,1); renderTable(); }
+document.getElementById('addItemBtn').addEventListener('click', addItem);
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  items = [
+    {name:'Engine parts', weight:12, volume:10, value:120},
+    {name:'Textiles', weight:8, volume:25, value:60},
+    {name:'Electronics', weight:5, volume:4, value:200},
+    {name:'Furniture', weight:30, volume:60, value:250},
+    {name:'Food crates', weight:3, volume:2, value:30},
+    {name:'Fragile glass', weight:4, volume:6, value:90}
+  ];
+  renderTable(); clearResult();
+});
+renderTable();
+
+/* ---------------- Solvers ---------------- */
+function setStatusBusy(b){
+  statusBox.innerHTML = b ? '<span style="width:36px;height:36px;border-radius:50%;border:4px solid rgba(2,6,23,0.08);border-top-color:var(--accent2);display:inline-block;animation:spin .9s linear infinite"></span>' : '';
+}
+document.getElementById('solveBtn').addEventListener('click', ()=>{
+  setStatusBusy(true);
+  setTimeout(()=> {
+    const mode = document.querySelector('input[name=mode]:checked').value;
+    const capW = Number(document.getElementById('capWeight').value) || 0;
+    const capV = Number(document.getElementById('capVolume').value) || 0;
+    modeChip.textContent = (mode==='single' ? 'Weight' : 'Weight+Volume');
+    if(mode==='single'){
+      const res = knapsack01DP(items, capW);
+      displaySolution(res.items, res.maxValue, mode);
+    } else {
+      // try exact pareto DP, but with state cap to prevent freeze
+      const MAX_STATES = 200000; // safety threshold
+      const resExact = paretoDPExact(items, capW, capV, MAX_STATES);
+      if(resExact.fellback){
+        // fell back, show approximate and notify
+        displaySolution(resExact.items, resExact.value, mode);
+        alert('Exact solver exceeded safe state limit — used fast approximate solver instead.');
+      } else {
+        displaySolution(resExact.items, resExact.value, mode);
+      }
+    }
+    setStatusBusy(false);
+  }, 180);
+});
+
+function clearResult(){ resultList.innerHTML=''; maxValueEl.textContent='—'; selCountEl.textContent='0'; }
+
+/* 0/1 knapsack DP (weights integer) */
+function knapsack01DP(itemsArr, capacity){
+  const items = itemsArr.map(i=>({w:Math.max(0,Math.floor(i.weight)), v:Number(i.value), name:i.name, weight:i.weight, volume:i.volume}));
+  const n = items.length, W = Math.max(0,Math.floor(capacity));
+  if(W<=0) return {maxValue:0, items:[]};
+  const dp = new Array(W+1).fill(0);
+  const keep = Array.from({length:n}, ()=> new Array(W+1).fill(false));
+  for(let i=0;i<n;i++){
+    const wt = items[i].w, val = items[i].v;
+    for(let w=W; w>=wt; w--){
+      if(dp[w-wt]+val > dp[w]){ dp[w]=dp[w-wt]+val; keep[i][w]=true; }
+    }
+  }
+  let w=W; const taken=[];
+  for(let i=n-1;i>=0;i--){
+    if(keep[i][w]){ taken.push({name:items[i].name, weight:items[i].weight, volume:items[i].volume, value:items[i].v}); w-=items[i].w; }
+  }
+  taken.reverse();
+  return {maxValue: Math.max(...dp), items: taken};
+}
+
+/* Two-constraint exact solver via Pareto frontier DP.
+   Maintains a list of non-dominated states [{w,v,val,itemsIndices}] after each item.
+   If states explode beyond maxStates, fallback to approximate greedy algorithm. */
+function paretoDPExact(itemsArr, capW, capV, maxStates=100000){
+  // Items clone
+  const items = itemsArr.map((it,idx)=>({w:Math.floor(it.weight), v:Number(it.value), name:it.name, volume:it.volume, idx}));
+  // initial state
+  let states = [{w:0,v:0,val:0, picked: []}];
+  for(let i=0;i<items.length;i++){
+    const it = items[i];
+    const newStates = [...states];
+    for(const s of states){
+      const nw = s.w + it.w, nv = s.v + Math.floor(it.volume);
+      if(nw <= capW && nv <= capV){
+        newStates.push({w:nw, v:nv, val: s.val + it.v, picked: s.picked.concat(it.idx)});
+      }
+    }
+    // prune: compute pareto frontier (remove dominated states)
+    newStates.sort((a,b)=> a.w - b.w || a.v - b.v || b.val - a.val);
+    const pruned = [];
+    for(const s of newStates){
+      // if any pruned state has both <= w and <= v and >= val, then s is dominated
+      let dominated = false;
+      for(const p of pruned){
+        if(p.w <= s.w && p.v <= s.v && p.val >= s.val){
+          dominated = true; break;
+        }
+      }
+      if(!dominated) pruned.push(s);
+      if(pruned.length > maxStates) break;
+    }
+    states = pruned;
+    if(states.length > maxStates){
+      // fallback to approximate greedy local search
+      return twoConstraintGreedyLocalSearch(itemsArr, capW, capV, 400, true);
+    }
+  }
+  // choose best value from states
+  let best = states.reduce((a,b)=> (b.val > a.val ? b : a), {val:-Infinity});
+  // map picked indices back to items
+  const pickedItems = best.picked.map(idx => itemsArr[idx]);
+  return {value: best.val, items: pickedItems, fellback:false};
+}
+
+/* Approx solver: greedy by density + random restarts (returns same shape as exact fallback) */
+function twoConstraintGreedyLocalSearch(itemsArr, capW, capV, iterations=200, fallback=false){
+  const filtered = itemsArr.filter(it => it.weight <= capW && it.volume <= capV).map((it,idx)=>({...it, _idx:idx}));
+  if(filtered.length===0) return {value:0, items: [] , fellback:fallback};
+  const dens = it => it.value / (it.weight + it.volume + 1e-9);
+  let order = [...filtered].sort((a,b)=> dens(b) - dens(a));
+  function pack(ord){
+    const sel=[]; let tw=0, tv=0, val=0;
+    for(const it of ord){
+      if(tw + it.weight <= capW && tv + it.volume <= capV){
+        sel.push(it); tw+=it.weight; tv+=it.volume; val+=it.value;
+      }
+    }
+    return {sel, val};
+  }
+  let best = pack(order);
+  for(let i=0;i<iterations;i++){
+    const shuffled = [...order].sort(()=>Math.random()-0.5);
+    const cand = pack(shuffled);
+    if(cand.val > best.val) best = cand;
+  }
+  return {value: best.val, items: best.sel.map(s => ({name:s.name, weight:s.weight, volume:s.volume, value:s.value})), fellback:fallback};
+}
+
+/* ---------------- Display & Interaction ---------------- */
+function displaySolution(selItems, totalValue, mode){
+  maxValueEl.textContent = totalValue;
+  selCountEl.textContent = selItems.length;
+  resultList.innerHTML = '';
+  // highlight selected table rows (by first matching)
+  const selIdx = new Set();
+  selItems.forEach(si=>{
+    for(let i=0;i<items.length;i++){
+      if(items[i].name===si.name && items[i].value===si.value && items[i].weight===si.weight && !selIdx.has(i)){
+        selIdx.add(i); break;
+      }
+    }
+  });
+  [...tbody.querySelectorAll('tr')].forEach(tr=>{
+    const idx = Number(tr.dataset.idx);
+    if(selIdx.has(idx)) tr.style.background='linear-gradient(90deg,#ecfeff80,#f0f9ff80)'; else tr.style.background='';
+  });
+  // populate result list
+  selItems.forEach(it=>{
+    const el = document.createElement('div'); el.className='result-item';
+    el.innerHTML = `<div><strong>${escapeHtml(it.name)}</strong><div class="small muted">W:${it.weight} • V:${it.volume}</div></div><div style="text-align:right"><div style="font-weight:800">${it.value}</div><div class="small muted">Value</div></div>`;
+    el.addEventListener('click', ()=> {
+      // scroll to matching row
+      const rows=[...tbody.querySelectorAll('tr')];
+      for(let r of rows){
+        const i = Number(r.dataset.idx);
+        if(items[i].name===it.name && items[i].weight===it.weight && items[i].value===it.value){
+          r.scrollIntoView({behavior:'smooth', block:'center'}); r.style.transition='background .18s'; r.style.background='linear-gradient(90deg,#ecfeff80,#f0f9ff80)';
+          setTimeout(()=> r.style.background='', 1400); break;
+        }
+      }
+    });
+    resultList.appendChild(el);
+  });
+  // update legend example
+  exampleBlock.textContent = `Mode: ${mode === 'single' ? 'Weight' : 'Weight + Volume'} | Max Value: ${totalValue}\n` +
+    selItems.map(it => `${it.name} (W:${it.weight}, V:${it.volume}, Val:${it.value})`).join('\n');
+  document.getElementById('legendMode').textContent = mode === 'single' ? 'Weight-only: maximize value under weight capacity.' : 'Weight+Volume: maximize value under both capacities.';
+}
+
+/* ---------------- Legend toggle & top controls ---------------- */
+document.getElementById('toggleLegend').addEventListener('click', ()=>{
+  const body = document.getElementById('legendBody'); const btn = document.getElementById('toggleLegend');
+  const open = body.classList.toggle('open'); btn.textContent = open ? 'ⓘ Collapse' : 'ⓘ Expand';
+});
+document.getElementById('printBtn').addEventListener('click', ()=> window.print());
+
+/* ---------------- CSV import/export ---------------- */
+document.getElementById('csvImportBtn').addEventListener('click', ()=> document.getElementById('csvFile').click());
+document.getElementById('csvFile').addEventListener('change', (ev)=>{
+  const f = ev.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = e => { parseCSV(e.target.result); ev.target.value=''; };
+  reader.readAsText(f);
+});
+function parseCSV(text){
+  const rows = text.trim().split(/\r?\n/).map(r => r.trim()).filter(Boolean);
+  const parsed=[];
+  for(let i=0;i<rows.length;i++){
+    const cols = rows[i].split(',').map(c=>c.trim());
+    if(i===0 && /^name/i.test(cols[0]) && /^weight/i.test(cols[1])) continue; // header
+    const [name,weight,volume,value] = cols;
+    if(!name) continue;
+    parsed.push({name, weight: Number(weight)||0, volume: Number(volume)||0, value: Number(value)||0});
+  }
+  if(parsed.length){ items = items.concat(parsed); renderTable(); alert('Imported ' + parsed.length + ' items'); }
+}
+document.getElementById('csvExportBtn').addEventListener('click', ()=>{
+  const rows = ['name,weight,volume,value'].concat(items.map(it => `${quoteCSV(it.name)},${it.weight},${it.volume},${it.value}`));
+  const blob = new Blob([rows.join('\\n')], {type:'text/csv'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='items.csv'; a.click(); URL.revokeObjectURL(url);
+});
+function quoteCSV(s){ if(/[,\\n"]/g.test(s)) return '"' + s.replace(/"/g,'""') + '"'; return s; }
+
+/* ---------------- JSON save/load for scenario ---------------- */
+document.getElementById('saveJsonBtn').addEventListener('click', ()=>{
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  const data = {items, mode, capWeight: Number(document.getElementById('capWeight').value)||0, capVolume: Number(document.getElementById('capVolume').value)||0, created: new Date().toISOString()};
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='scenario.json'; a.click(); URL.revokeObjectURL(url);
+});
+/* load JSON */
+const jsonFileEl = document.getElementById('jsonFile');
+jsonFileEl.addEventListener('change', (ev)=>{
+  const f = ev.target.files[0]; if(!f) return;
+  const reader = new FileReader(); reader.onload = e => {
+    try{
+      const obj = JSON.parse(e.target.result);
+      if(obj.items) { items = obj.items; renderTable(); document.querySelector(`input[name=mode][value="${obj.mode || 'single'}"]`).checked = true; document.getElementById('capWeight').value = obj.capWeight || 0; document.getElementById('capVolume').value = obj.capVolume || 0; alert('Scenario loaded'); }
+      else alert('Invalid scenario JSON.');
+    } catch(err){ alert('Invalid JSON file'); }
+    ev.target.value='';
+  }; reader.readAsText(f);
+});
+/* provide UI trigger to open file input for JSON (reuse CSV button: when user holds Alt/click) */
+document.getElementById('csvExportBtn').addEventListener('auxclick', ()=> jsonFileEl.click());
+
+/* ---------------- Utility: clear highlights on page load ---------------- */
+function init(){ clearResult(); }
+init();
+
+</script>
+
+</body>
+</html>
